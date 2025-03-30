@@ -176,17 +176,22 @@ class MicrosoftAuthFlow {
 
   async getMinecraftJavaToken (options = {}) {
     const response = { token: '', entitlements: {}, profile: {} }
-    if (await this.mca.verifyTokens()) {
-      debug('[mc] Using existing tokens')
-      const { token } = await this.mca.getCachedAccessToken()
-      response.token = token
+    if(options.msaToken) {
+      response.token = options.msaToken
+      debug('[mc] Using MSA token directly')
     } else {
-      debug('[mc] Need to obtain tokens')
-      await retry(async () => {
-        const xsts = await this.getXboxToken(Endpoints.minecraftJava.XSTSRelyingParty)
-        debug('[xbl] xsts data', xsts)
-        response.token = await this.mca.getAccessToken(xsts)
-      }, () => { this.xbl.forceRefresh = true }, 2)
+      if (await this.mca.verifyTokens()) {
+        debug('[mc] Using existing tokens')
+        const { token } = await this.mca.getCachedAccessToken()
+        response.token = token
+      } else {
+        debug('[mc] Need to obtain tokens')
+        await retry(async () => {
+          const xsts = await this.getXboxToken(Endpoints.minecraftJava.XSTSRelyingParty)
+          debug('[xbl] xsts data', xsts)
+          response.token = await this.mca.getAccessToken(xsts)
+        }, () => { this.xbl.forceRefresh = true }, 2)
+      }
     }
 
     if (options.fetchEntitlements) {
